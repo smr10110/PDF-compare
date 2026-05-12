@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PDF Compare — Análisis Temático</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --primary:       #17171c;
+  --ink:           #212121;
+  --deep-green:    #003c33;
+  --canvas:        #ffffff;
+  --soft-stone:    #eeece7;
+  --pale-green:    #edfce9;
+  --hairline:      #d9d9dd;
+  --border-light:  #e5e7eb;
+  --muted:         #93939f;
+  --slate:         #75758a;
+  --action-blue:   #1863dc;
+  --coral:         #ff7759;
+  --coral-soft:    #ffad9b;
+  --error:         #b30000;
+
+  --r-xs:   4px;
+  --r-sm:   8px;
+  --r-md:   16px;
+  --r-lg:   22px;
+  --r-xl:   30px;
+  --r-pill: 32px;
+
+  --font-display: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui;
+  --font-body:    'DM Sans', 'Inter', ui-sans-serif, system-ui;
+  --font-mono:    'DM Mono', 'Courier New', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── ANNOUNCEMENT BAR ── */
+.announcement-bar {
+  background: var(--primary);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.4;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 0.01em;
+}
+.announcement-bar a {
+  color: var(--coral-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── NAV ── */
+nav {
+  background: var(--canvas);
+  border-bottom: 1px solid var(--hairline);
+  padding: 0 40px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--primary);
+  letter-spacing: -0.3px;
+  text-decoration: none;
+}
+.nav-logo svg { width: 28px; height: 28px; }
+.nav-badge {
+  background: var(--soft-stone);
+  color: var(--slate);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: var(--r-xs);
+}
+.nav-cta {
+  background: var(--primary);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 20px;
+  border-radius: var(--r-pill);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.nav-cta:hover { opacity: 0.82; }
+
+/* ── HERO ── */
+.hero {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 80px 40px 64px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .hero { grid-template-columns: 1fr; padding: 48px 24px 40px; gap: 40px; }
+  nav { padding: 0 24px; }
+}
+
+.hero-left {}
+.hero-tag {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--coral);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hero-tag::before {
+  content: '';
+  width: 20px;
+  height: 1px;
+  background: var(--coral);
+}
+.hero-headline {
+  font-family: var(--font-display);
+  font-size: clamp(38px, 5vw, 56px);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -1.2px;
+  color: var(--primary);
+  margin-bottom: 20px;
+}
+.hero-headline em {
+  font-style: normal;
+  color: var(--deep-green);
+}
+.hero-body {
+  font-size: 17px;
+  color: var(--slate);
+  line-height: 1.6;
+  max-width: 400px;
+  margin-bottom: 32px;
+}
+.hero-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.method-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.method-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* ── UPLOAD PANEL ── */
+.upload-panel {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02);
+}
+.upload-panel-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.upload-panel-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--primary);
+  letter-spacing: -0.2px;
+}
+.upload-panel-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.dropzone {
+  padding: 28px 24px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--border-light);
+}
+.dropzone:hover, .dropzone.dragover { background: var(--soft-stone); }
+.dropzone input[type=file] { display: none; }
+.drop-inner {
+  border: 1.5px dashed var(--hairline);
+  border-radius: var(--r-md);
+  padding: 28px 20px;
+  text-align: center;
+  transition: border-color 0.15s;
+}
+.dropzone.dragover .drop-inner { border-color: var(--action-blue); }
+.drop-icon {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 12px;
+  background: var(--soft-stone);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.drop-icon svg { width: 20px; height: 20px; color: var(--muted); }
+.drop-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.drop-sub { font-size: 13px; color: var(--muted); }
+
+.file-tray {
+  padding: 12px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 48px;
+  align-items: center;
+}
+.file-tray:empty::after {
+  content: 'Ningún archivo seleccionado';
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.file-chip {
+  background: var(--soft-stone);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-xs);
+  padding: 4px 8px 4px 10px;
+  font-size: 12px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+}
+.file-chip button {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); line-height: 1; padding: 0; font-size: 14px;
+}
+.file-chip button:hover { color: var(--error); }
+
+.upload-panel-footer {
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 24px;
+  border-radius: var(--r-pill);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-primary:not(:disabled):hover { opacity: 0.82; }
+.btn-ghost {
+  background: none;
+  border: 1px solid var(--hairline);
+  color: var(--slate);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: var(--r-xl);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-ghost:hover { background: var(--soft-stone); }
+
+.spinner-wrap { display: none; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.spinner-wrap.active { display: flex; }
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid var(--border-light);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── TRUST STRIP ── */
+.trust-strip {
+  border-top: 1px solid var(--hairline);
+  padding: 20px 40px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.trust-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.trust-items { display: flex; gap: 24px; flex-wrap: wrap; }
+.trust-item {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--slate);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.trust-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--coral); }
+
+/* ── ERROR ── */
+.error-box {
+  display: none;
+  margin: 0 40px;
+  max-width: 1020px;
+  margin-left: auto;
+  margin-right: auto;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: var(--r-sm);
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--error);
+}
+
+/* ── RESULTS SECTION ── */
+#results { display: none; }
+
+.dark-band {
+  background: var(--deep-green);
+  color: #fff;
+  padding: 64px 40px;
+  margin-top: 64px;
+}
+.dark-band-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.results-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 10px;
+}
+.results-headline {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 400;
+  letter-spacing: -0.8px;
+  line-height: 1.1;
+  color: #fff;
+  margin-bottom: 40px;
+}
+.results-headline span { color: var(--coral-soft); }
+
+.score-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+@media (max-width: 640px) { .score-cards { grid-template-columns: 1fr; } }
+
+.score-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--r-md);
+  padding: 28px 28px 24px;
+}
+.score-card-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.score-card-tag-badge {
+  background: rgba(255,119,89,0.18);
+  color: var(--coral-soft);
+  border-radius: var(--r-xs);
+  padding: 2px 6px;
+  font-size: 10px;
+}
+.score-card-tag-badge.blue {
+  background: rgba(24,99,220,0.22);
+  color: #93b8ff;
+}
+.score-number {
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -2px;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.score-label {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.score-label.high   { color: #6ee7b7; }
+.score-label.med    { color: #fde68a; }
+.score-label.low    { color: #fed7aa; }
+.score-label.none   { color: #fca5a5; }
+.score-detail { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.55; }
+
+/* ── VENN SECTION ── */
+.venn-section {
+  background: var(--soft-stone);
+  padding: 64px 40px;
+}
+.venn-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.section-heading {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 400;
+  letter-spacing: -0.5px;
+  color: var(--primary);
+  margin-bottom: 40px;
+}
+
+.venn-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 40px;
+  align-items: start;
+}
+@media (max-width: 900px) { .venn-layout { grid-template-columns: 1fr; } }
+
+.venn-svg-wrap {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#venn-svg { width: 100%; max-width: 520px; }
+
+.kw-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.kw-card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.kw-card-header {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-light);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kw-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.kw-dot.coral { background: var(--coral); }
+.kw-dot.blue  { background: var(--action-blue); }
+.kw-dot.green { background: var(--deep-green); }
+.kw-list {
+  padding: 10px 16px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.kw-tag {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--slate);
+  background: var(--soft-stone);
+  border-radius: var(--r-xs);
+  padding: 2px 7px;
+}
+.kw-tag.common {
+  background: var(--pale-green);
+  color: var(--deep-green);
+}
+</style>
+</head>
+<body>
+
+<div class="announcement-bar">
+  Análisis temático potenciado por IA · Groq × Llama 3.3 70B
+</div>
+
+<nav>
+  <a class="nav-logo" href="#">
+    <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="10" cy="14" r="8" fill="#003c33" fill-opacity=".15" stroke="#003c33" stroke-width="1.5"/>
+      <circle cx="18" cy="14" r="8" fill="#ff7759" fill-opacity=".15" stroke="#ff7759" stroke-width="1.5"/>
+    </svg>
+    pdf-compare
+  </a>
+  <span class="nav-badge">beta</span>
+  <div style="display:flex;gap:12px;align-items:center;margin-left:auto;">
+    <span style="font-size:13px;color:var(--muted);font-family:var(--font-mono);">v1.0</span>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-tag">Comparador semántico</div>
+    <h1 class="hero-headline">
+      ¿Qué tan<br/>
+      <em>relacionados</em><br/>
+      son tus PDFs?
+    </h1>
+    <p class="hero-body">
+      Dos estrategias de inteligencia artificial analizan tus documentos y miden su afinidad temática con precisión.
+    </p>
+    <div class="hero-methods">
+      <div class="method-row">
+        <span class="method-num">1</span>
+        <span>Extracción y comparación de keywords (Jaccard)</span>
+      </div>
+      <div class="method-row">
+        <span class="method-num">2</span>
+        <span>Consulta directa al LLM con análisis semántico</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="upload-panel">
+      <div class="upload-panel-header">
+        <span class="upload-panel-title">Seleccionar documentos</span>
+        <span class="upload-panel-count" id="fileCount">0 / mín. 2</span>
+      </div>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".pdf" multiple/>
+        <div class="drop-inner">
+          <div class="drop-icon">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M10 13V3m0 0L7 6m3-3l3 3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M3 14v1a3 3 0 003 3h8a3 3 0 003-3v-1" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="drop-title">Arrastra archivos PDF aquí</div>
+          <div class="drop-sub">o haz clic para seleccionar</div>
+        </div>
+      </div>
+      <div class="file-tray" id="fileTray"></div>
+      <div class="upload-panel-footer">
+        <button class="btn-primary" id="compareBtn" disabled>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="5" cy="7" r="3.5" stroke="white" stroke-width="1.2"/>
+            <circle cx="9" cy="7" r="3.5" stroke="white" stroke-width="1.2"/>
+          </svg>
+          Analizar documentos
+        </button>
+        <button class="btn-ghost" id="clearBtn">Limpiar</button>
+        <div class="spinner-wrap" id="spinnerWrap">
+          <div class="spinner"></div>
+          <span>Analizando…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="trust-strip">
+  <span class="trust-label">Tecnología</span>
+  <div class="trust-items">
+    <span class="trust-item"><span class="trust-dot"></span>Groq API</span>
+    <span class="trust-item"><span class="trust-dot"></span>Llama 3.3 70B</span>
+    <span class="trust-item"><span class="trust-dot"></span>PyMuPDF</span>
+    <span class="trust-item"><span class="trust-dot"></span>Jaccard Similarity</span>
+    <span class="trust-item"><span class="trust-dot"></span>FastAPI</span>
+  </div>
+</div>
+
+<div class="error-box" id="errorBox"></div>
+
+<div id="results">
+  <div class="dark-band">
+    <div class="dark-band-inner">
+      <div class="results-eyebrow">Resultados del análisis</div>
+      <h2 class="results-headline" id="resultsHeadline">
+        Documentos <span id="headlineLabel">—</span>
+      </h2>
+      <div class="score-cards">
+        <div class="score-card">
+          <div class="score-card-tag">
+            Estrategia 1
+            <span class="score-card-tag-badge">Keywords</span>
+          </div>
+          <div class="score-number" id="s1-score">—</div>
+          <div class="score-label" id="s1-label">—</div>
+          <div class="score-detail" id="s1-detail"></div>
+        </div>
+        <div class="score-card">
+          <div class="score-card-tag">
+            Estrategia 2
+            <span class="score-card-tag-badge blue">LLM Directo</span>
+          </div>
+          <div class="score-number" id="s2-score">—</div>
+          <div class="score-label" id="s2-label">—</div>
+          <div class="score-detail" id="s2-explanation"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="venn-section">
+    <div class="venn-inner">
+      <div class="section-label">Visualización de keywords</div>
+      <h3 class="section-heading">Diagrama de Venn</h3>
+      <div class="venn-layout">
+        <div class="venn-svg-wrap">
+          <svg id="venn-svg" viewBox="0 0 600 340" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <div class="kw-panel">
+          <div class="kw-card">
+            <div class="kw-card-header">
+              <span class="kw-dot coral"></span>
+              <span id="colATitle" style="color:var(--coral)">Solo PDF 1</span>
+            </div>
+            <div class="kw-list" id="colA"></div>
+          </div>
+          <div class="kw-card">
+            <div class="kw-card-header">
+              <span class="kw-dot green"></span>
+              <span style="color:var(--deep-green)">En común</span>
+            </div>
+            <div class="kw-list" id="colCommon"></div>
+          </div>
+          <div class="kw-card">
+            <div class="kw-card-header">
+              <span class="kw-dot blue"></span>
+              <span id="colBTitle" style="color:var(--action-blue)">Solo PDF 2</span>
+            </div>
+            <div class="kw-list" id="colB"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const dropzone    = document.getElementById('dropzone');
+const fileInput   = document.getElementById('fileInput');
+const fileTray    = document.getElementById('fileTray');
+const compareBtn  = document.getElementById('compareBtn');
+const clearBtn    = document.getElementById('clearBtn');
+const spinnerWrap = document.getElementById('spinnerWrap');
+const errorBox    = document.getElementById('errorBox');
+const results     = document.getElementById('results');
+const fileCount   = document.getElementById('fileCount');
+
+let selectedFiles = [];
+
+dropzone.addEventListener('click', e => { if (e.target.tagName !== 'BUTTON') fileInput.click(); });
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('dragover');
+  addFiles([...e.dataTransfer.files].filter(f => f.type === 'application/pdf'));
+});
+fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fileInput.value = ''; });
+
+function addFiles(files) {
+  files.forEach(f => {
+    if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f);
+  });
+  render();
+}
+
+function render() {
+  fileTray.innerHTML = '';
+  selectedFiles.forEach((f, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'file-chip';
+    chip.innerHTML = `${f.name.replace(/\.pdf$/i,'')} <button onclick="removeFile(${i})">×</button>`;
+    fileTray.appendChild(chip);
+  });
+  compareBtn.disabled = selectedFiles.length < 2;
+  fileCount.textContent = `${selectedFiles.length} / mín. 2`;
+}
+window.removeFile = i => { selectedFiles.splice(i, 1); render(); };
+
+clearBtn.addEventListener('click', () => {
+  selectedFiles = []; render();
+  results.style.display = 'none';
+  errorBox.style.display = 'none';
+});
+
+compareBtn.addEventListener('click', async () => {
+  errorBox.style.display = 'none';
+  results.style.display = 'none';
+  spinnerWrap.classList.add('active');
+  compareBtn.disabled = true;
+
+  const form = new FormData();
+  selectedFiles.forEach(f => form.append('files', f));
+
+  try {
+    const res  = await fetch('/compare', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Error del servidor');
+    showResults(data);
+  } catch (e) {
+    errorBox.textContent = '❌ ' + e.message;
+    errorBox.style.display = 'block';
+  } finally {
+    spinnerWrap.classList.remove('active');
+    compareBtn.disabled = false;
+  }
+});
+
+function labelClass(label) {
+  if (label.includes('Alta'))  return 'high';
+  if (label.includes('Media')) return 'med';
+  if (label.includes('poco'))  return 'low';
+  return 'none';
+}
+
+function scoreColor(pct) {
+  if (pct >= 60) return '#6ee7b7';
+  if (pct >= 30) return '#fde68a';
+  if (pct >= 10) return '#fed7aa';
+  return '#fca5a5';
+}
+
+function showResults(data) {
+  const s1 = data.strategy1, s2 = data.strategy2;
+
+  document.getElementById('headlineLabel').textContent = s1.label.toLowerCase();
+
+  document.getElementById('s1-score').textContent = s1.similarity_pct.toFixed(1) + '%';
+  document.getElementById('s1-score').style.color = scoreColor(s1.similarity_pct);
+  const l1 = document.getElementById('s1-label');
+  l1.textContent = s1.label; l1.className = 'score-label ' + labelClass(s1.label);
+  document.getElementById('s1-detail').textContent =
+    `${s1.intersection.length} keywords compartidas de ${new Set([...s1.keywords[0], ...s1.keywords[1]]).size} únicas totales.`;
+
+  document.getElementById('s2-score').textContent = s2.affinity_pct.toFixed(1) + '%';
+  document.getElementById('s2-score').style.color = scoreColor(s2.affinity_pct);
+  const l2 = document.getElementById('s2-label');
+  l2.textContent = s2.label; l2.className = 'score-label ' + labelClass(s2.label);
+  document.getElementById('s2-explanation').textContent = s2.explanation;
+
+  const names = data.filenames;
+  const shortName = n => n.replace(/\.pdf$/i,'').substring(0,18);
+  document.getElementById('colATitle').textContent = shortName(names[0] || 'PDF 1');
+  document.getElementById('colBTitle').textContent = shortName(names[1] || 'PDF 2');
+
+  renderTags('colA',      s1.only_a.slice(0,14),        false);
+  renderTags('colCommon', s1.intersection.slice(0,14),  true);
+  renderTags('colB',      s1.only_b.slice(0,14),        false);
+
+  drawVenn(s1.similarity_pct, s1.only_a.length, s1.only_b.length, s1.intersection.length, names);
+
+  results.style.display = 'block';
+  document.querySelector('.dark-band').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderTags(id, items, common) {
+  const el = document.getElementById(id);
+  el.innerHTML = items.length
+    ? items.map(k => `<span class="kw-tag${common?' common':''}">${k}</span>`).join('')
+    : '<span class="kw-tag" style="color:var(--muted)">—</span>';
+}
+
+function drawVenn(simPct, countA, countB, countCommon, names) {
+  const svg = document.getElementById('venn-svg');
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', '0 0 600 340');
+  const ns = 'http://www.w3.org/2000/svg';
+  const W = 600, H = 340, R = 100, cy = 175;
+
+  const maxOverlap = R * 1.72;
+  const overlap = (simPct / 100) * maxOverlap;
+  const dist = Math.max(R * 0.3, R * 2 - overlap);
+  const cx1 = W / 2 - dist / 2;
+  const cx2 = W / 2 + dist / 2;
+  const midX = (cx1 + cx2) / 2;
+
+  /* ─ defs ─ */
+  const defs = document.createElementNS(ns, 'defs');
+
+  const mkGrad = (id, cx, color) => {
+    const g = document.createElementNS(ns, 'radialGradient');
+    g.setAttribute('id', id); g.setAttribute('cx', cx); g.setAttribute('cy', '35%'); g.setAttribute('r', '65%');
+    [['0%', color, '0.55'], ['100%', color, '0.15']].forEach(([off, col, op]) => {
+      const s = document.createElementNS(ns, 'stop');
+      s.setAttribute('offset', off); s.setAttribute('stop-color', col); s.setAttribute('stop-opacity', op);
+      g.appendChild(s);
+    });
+    return g;
+  };
+  defs.appendChild(mkGrad('gA', '38%', '#ff7759'));
+  defs.appendChild(mkGrad('gB', '62%', '#1863dc'));
+
+  const clipA = document.createElementNS(ns, 'clipPath'); clipA.setAttribute('id', 'clipVA');
+  const ca = document.createElementNS(ns, 'circle');
+  ca.setAttribute('cx', cx1); ca.setAttribute('cy', cy); ca.setAttribute('r', R);
+  clipA.appendChild(ca); defs.appendChild(clipA);
+  svg.appendChild(defs);
+
+  /* ─ background subtle grid ─ */
+  const bgRect = document.createElementNS(ns, 'rect');
+  bgRect.setAttribute('width', W); bgRect.setAttribute('height', H);
+  bgRect.setAttribute('fill', 'none');
+  svg.appendChild(bgRect);
+
+  /* ─ circles ─ */
+  const mkCircle = (cx, fill, stroke) => {
+    const c = document.createElementNS(ns, 'circle');
+    c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', R);
+    c.setAttribute('fill', fill); c.setAttribute('stroke', stroke); c.setAttribute('stroke-width', '1.5');
+    return c;
+  };
+  svg.appendChild(mkCircle(cx1, 'url(#gA)', '#ff7759'));
+  svg.appendChild(mkCircle(cx2, 'url(#gB)', '#1863dc'));
+
+  /* ─ intersection tint ─ */
+  const intC = document.createElementNS(ns, 'circle');
+  intC.setAttribute('cx', cx2); intC.setAttribute('cy', cy); intC.setAttribute('r', R);
+  intC.setAttribute('fill', '#6b48c8'); intC.setAttribute('fill-opacity', '0.22');
+  intC.setAttribute('clip-path', 'url(#clipVA)');
+  svg.appendChild(intC);
+
+  /* ─ helper: text node ─ */
+  const txt = (x, y, content, size, fill, weight, anchor) => {
+    const el = document.createElementNS(ns, 'text');
+    el.setAttribute('x', x); el.setAttribute('y', y);
+    el.setAttribute('text-anchor', anchor || 'middle');
+    el.setAttribute('fill', fill); el.setAttribute('font-size', size);
+    el.setAttribute('font-family', "'DM Mono','Courier New',monospace");
+    if (weight) el.setAttribute('font-weight', weight);
+    el.textContent = content;
+    return el;
+  };
+
+  /* ─ helper: pill badge ─ */
+  const pill = (cx, cy2, w, h, fill, stroke, rx) => {
+    const r = document.createElementNS(ns, 'rect');
+    r.setAttribute('x', cx - w/2); r.setAttribute('y', cy2 - h/2);
+    r.setAttribute('width', w); r.setAttribute('height', h);
+    r.setAttribute('rx', rx || 8); r.setAttribute('fill', fill);
+    if (stroke) { r.setAttribute('stroke', stroke); r.setAttribute('stroke-width', '1'); }
+    return r;
+  };
+
+  /* ─ file name pills above circles ─ */
+  const nameA = (names[0]||'PDF 1').replace(/\.pdf$/i,'');
+  const nameB = (names[1]||'PDF 2').replace(/\.pdf$/i,'');
+  const truncA = nameA.length > 18 ? nameA.substring(0,16)+'…' : nameA;
+  const truncB = nameB.length > 18 ? nameB.substring(0,16)+'…' : nameB;
+
+  svg.appendChild(pill(cx1, cy - R - 26, 130, 22, 'rgba(255,119,89,0.12)', 'rgba(255,119,89,0.35)', 11));
+  svg.appendChild(txt(cx1, cy - R - 18, truncA, 10.5, '#d95f3b', '500'));
+
+  svg.appendChild(pill(cx2, cy - R - 26, 130, 22, 'rgba(24,99,220,0.10)', 'rgba(24,99,220,0.3)', 11));
+  svg.appendChild(txt(cx2, cy - R - 18, truncB, 10.5, '#1254b8', '500'));
+
+  /* ─ exclusive zone counts ─ */
+  const exA = cx1 - R * 0.48;
+  svg.appendChild(txt(exA, cy - 6, countA.toString(), 30, '#3d1a0f', '300'));
+  svg.appendChild(txt(exA, cy + 18, 'únicos', 10, '#b07060', '400'));
+
+  const exB = cx2 + R * 0.48;
+  svg.appendChild(txt(exB, cy - 6, countB.toString(), 30, '#0b1f42', '300'));
+  svg.appendChild(txt(exB, cy + 18, 'únicos', 10, '#6080b8', '400'));
+
+  /* ─ intersection badge (white pill, always readable) ─ */
+  svg.appendChild(pill(midX, cy - 14, 68, 30, 'rgba(255,255,255,0.94)', 'rgba(100,80,200,0.25)', 15));
+  svg.appendChild(txt(midX, cy - 5, countCommon.toString(), 18, '#17171c', '600'));
+  svg.appendChild(txt(midX, cy + 9, 'comunes', 9, '#6b48c8', '500'));
+
+  /* ─ similarity bar at bottom ─ */
+  const barY = cy + R + 24;
+  const barW = 220, barH = 28, barX = W/2 - barW/2;
+
+  svg.appendChild(pill(W/2, barY + barH/2, barW, barH, '#f5f4f9', '#e0dcf0', 14));
+
+  const filledW = Math.max(8, barW * simPct / 100);
+  const fillBar = document.createElementNS(ns, 'rect');
+  fillBar.setAttribute('x', barX); fillBar.setAttribute('y', barY);
+  fillBar.setAttribute('width', filledW); fillBar.setAttribute('height', barH);
+  fillBar.setAttribute('rx', 14); fillBar.setAttribute('fill', '#6b48c8'); fillBar.setAttribute('fill-opacity', '0.18');
+  svg.appendChild(fillBar);
+
+  svg.appendChild(txt(W/2 - barW/2 + 12, barY + 18, 'similitud', 9, '#93939f', '400', 'start'));
+  svg.appendChild(txt(W/2 + barW/2 - 12, barY + 18, simPct.toFixed(1) + '%', 11, '#6b48c8', '600', 'end'));
+  svg.appendChild(txt(W/2, barY + 18, '─────────────', 9, '#d9d9dd', '400'));
+}
+</script>
+</body>
+</html>
