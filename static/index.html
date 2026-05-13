@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.16.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/venn.js/0.2.14/venn.min.js"></script>
 <style>
 :root {
   --primary:       #17171c;
@@ -512,7 +514,9 @@ nav {
   align-items: center;
   justify-content: center;
 }
-#venn-svg { width: 100%; max-width: 520px; }
+#venn-container { width: 100%; max-width: 520px; display: flex; flex-direction: column; align-items: center; }
+#venn-container svg { overflow: visible; width: 100%; }
+#venn-container .venntooltip { display: none; }
 
 .kw-panel {
   display: flex;
@@ -574,10 +578,6 @@ nav {
     </svg>
     pdf-compare
   </a>
-  <span class="nav-badge">beta</span>
-  <div style="display:flex;gap:12px;align-items:center;margin-left:auto;">
-    <span style="font-size:13px;color:var(--muted);font-family:var(--font-mono);">v1.0</span>
-  </div>
 </nav>
 
 <section class="hero">
@@ -690,7 +690,7 @@ nav {
       <h3 class="section-heading">Diagrama de Venn</h3>
       <div class="venn-layout">
         <div class="venn-svg-wrap">
-          <svg id="venn-svg" viewBox="0 0 600 340" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div id="venn-container"></div>
         </div>
         <div class="kw-panel">
           <div class="kw-card">
@@ -713,6 +713,13 @@ nav {
               <span id="colBTitle" style="color:var(--action-blue)">Solo PDF 2</span>
             </div>
             <div class="kw-list" id="colB"></div>
+          </div>
+          <div class="kw-card" id="colCCard" style="display:none">
+            <div class="kw-card-header">
+              <span class="kw-dot" style="background:#7c3aed"></span>
+              <span id="colCTitle" style="color:#7c3aed">Solo PDF 3</span>
+            </div>
+            <div class="kw-list" id="colC"></div>
           </div>
         </div>
       </div>
@@ -744,6 +751,7 @@ fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fil
 
 function addFiles(files) {
   files.forEach(f => {
+    if (selectedFiles.length >= 3) return;
     if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f);
   });
   render();
@@ -758,7 +766,7 @@ function render() {
     fileTray.appendChild(chip);
   });
   compareBtn.disabled = selectedFiles.length < 2;
-  fileCount.textContent = `${selectedFiles.length} / mín. 2`;
+  fileCount.textContent = `${selectedFiles.length} / máx. 3`;
 }
 window.removeFile = i => { selectedFiles.splice(i, 1); render(); };
 
@@ -814,8 +822,9 @@ function showResults(data) {
   document.getElementById('s1-score').style.color = scoreColor(s1.similarity_pct);
   const l1 = document.getElementById('s1-label');
   l1.textContent = s1.label; l1.className = 'score-label ' + labelClass(s1.label);
+  const allUnique = new Set(s1.keywords.flat());
   document.getElementById('s1-detail').textContent =
-    `${s1.intersection.length} keywords compartidas de ${new Set([...s1.keywords[0], ...s1.keywords[1]]).size} únicas totales.`;
+    `${s1.intersection.length} keywords compartidas de ${allUnique.size} únicas totales.`;
 
   document.getElementById('s2-score').textContent = s2.affinity_pct.toFixed(1) + '%';
   document.getElementById('s2-score').style.color = scoreColor(s2.affinity_pct);
@@ -828,11 +837,22 @@ function showResults(data) {
   document.getElementById('colATitle').textContent = shortName(names[0] || 'PDF 1');
   document.getElementById('colBTitle').textContent = shortName(names[1] || 'PDF 2');
 
-  renderTags('colA',      s1.only_a.slice(0,14),        false);
-  renderTags('colCommon', s1.intersection.slice(0,14),  true);
-  renderTags('colB',      s1.only_b.slice(0,14),        false);
+  renderTags('colA',      s1.only_a.slice(0,12),       false);
+  renderTags('colCommon', s1.intersection.slice(0,12), true);
+  renderTags('colB',      s1.only_b.slice(0,12),       false);
 
-  drawVenn(s1.similarity_pct, s1.only_a.length, s1.only_b.length, s1.intersection.length, names);
+  const colCCard = document.getElementById('colCCard');
+  if (names.length >= 3) {
+    colCCard.style.display = 'block';
+    document.getElementById('colCTitle').textContent = shortName(names[2]);
+    renderTags('colC', (s1.only_c || []).slice(0,12), false);
+  } else {
+    colCCard.style.display = 'none';
+  }
+
+  const realCountA = new Set(s1.keywords[0]).size - s1.intersection.length;
+  const realCountB = new Set(s1.keywords[1]).size - s1.intersection.length;
+  drawVenn(s1.similarity_pct, realCountA, realCountB, s1.intersection.length, names, s1.keywords.map(k => new Set(k).size));
 
   results.style.display = 'block';
   document.querySelector('.dark-band').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -845,129 +865,138 @@ function renderTags(id, items, common) {
     : '<span class="kw-tag" style="color:var(--muted)">—</span>';
 }
 
-function drawVenn(simPct, countA, countB, countCommon, names) {
-  const svg = document.getElementById('venn-svg');
-  svg.innerHTML = '';
-  svg.setAttribute('viewBox', '0 0 600 340');
-  const ns = 'http://www.w3.org/2000/svg';
-  const W = 600, H = 340, R = 100, cy = 175;
+function drawVenn(simPct, countA, countB, countCommon, names, totals) {
+  if (names.length >= 3) { drawVenn3(simPct, countCommon, names, totals); return; }
+  drawVenn2(simPct, countA, countB, countCommon, names);
+}
 
-  const maxOverlap = R * 1.72;
-  const overlap = (simPct / 100) * maxOverlap;
-  const dist = Math.max(R * 0.3, R * 2 - overlap);
-  const cx1 = W / 2 - dist / 2;
-  const cx2 = W / 2 + dist / 2;
-  const midX = (cx1 + cx2) / 2;
+function drawVenn3(simPct, countCommon, names, totals) {
+  const container = document.getElementById('venn-container');
+  container.innerHTML = '';
 
-  /* ─ defs ─ */
-  const defs = document.createElementNS(ns, 'defs');
+  const shortN = n => { const s = (n || '').replace(/\.pdf$/i, ''); return s.length > 14 ? s.substring(0, 12) + '…' : s; };
+  const totalA = Math.max(totals?.[0] || 1, 1);
+  const totalB = Math.max(totals?.[1] || 1, 1);
+  const totalC = Math.max(totals?.[2] || 1, 1);
+  const common = Math.max(countCommon, 0);
 
-  const mkGrad = (id, cx, color) => {
-    const g = document.createElementNS(ns, 'radialGradient');
-    g.setAttribute('id', id); g.setAttribute('cx', cx); g.setAttribute('cy', '35%'); g.setAttribute('r', '65%');
-    [['0%', color, '0.55'], ['100%', color, '0.15']].forEach(([off, col, op]) => {
-      const s = document.createElementNS(ns, 'stop');
-      s.setAttribute('offset', off); s.setAttribute('stop-color', col); s.setAttribute('stop-opacity', op);
-      g.appendChild(s);
-    });
-    return g;
-  };
-  defs.appendChild(mkGrad('gA', '38%', '#ff7759'));
-  defs.appendChild(mkGrad('gB', '62%', '#1863dc'));
+  /* venn.js necesita las intersecciones por pares además de la triple.
+     Usamos el valor de la intersección global para todas las combinaciones,
+     ya que el backend solo calcula A∩B∩C. Esto asegura que a 0 comunes
+     los círculos se separan automáticamente. */
+  const sets = [
+    { sets: ['A'],         size: totalA, label: shortN(names[0] || 'PDF 1') },
+    { sets: ['B'],         size: totalB, label: shortN(names[1] || 'PDF 2') },
+    { sets: ['C'],         size: totalC, label: shortN(names[2] || 'PDF 3') },
+    { sets: ['A', 'B'],    size: common },
+    { sets: ['A', 'C'],    size: common },
+    { sets: ['B', 'C'],    size: common },
+    { sets: ['A', 'B', 'C'], size: common, label: common > 0 ? common + ' comunes' : '' }
+  ];
 
-  const clipA = document.createElementNS(ns, 'clipPath'); clipA.setAttribute('id', 'clipVA');
-  const ca = document.createElementNS(ns, 'circle');
-  ca.setAttribute('cx', cx1); ca.setAttribute('cy', cy); ca.setAttribute('r', R);
-  clipA.appendChild(ca); defs.appendChild(clipA);
-  svg.appendChild(defs);
+  const chart = venn.VennDiagram().width(480).height(300);
+  const div = d3.select(container);
+  div.datum(sets).call(chart);
 
-  /* ─ background subtle grid ─ */
-  const bgRect = document.createElementNS(ns, 'rect');
-  bgRect.setAttribute('width', W); bgRect.setAttribute('height', H);
-  bgRect.setAttribute('fill', 'none');
-  svg.appendChild(bgRect);
+  /* ─ estilos de los tres círculos ─ */
+  const palette = ['#ff7759', '#1863dc', '#7c3aed'];
+  const textPal = ['#c94e2c', '#1254b8', '#5b21b6'];
+  const keys    = ['A', 'B', 'C'];
 
-  /* ─ circles ─ */
-  const mkCircle = (cx, fill, stroke) => {
-    const c = document.createElementNS(ns, 'circle');
-    c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', R);
-    c.setAttribute('fill', fill); c.setAttribute('stroke', stroke); c.setAttribute('stroke-width', '1.5');
-    return c;
-  };
-  svg.appendChild(mkCircle(cx1, 'url(#gA)', '#ff7759'));
-  svg.appendChild(mkCircle(cx2, 'url(#gB)', '#1863dc'));
+  div.selectAll('.venn-circle').each(function(d) {
+    const idx = keys.indexOf(d.sets[0]);
+    if (idx === -1) return;
+    d3.select(this).select('path')
+      .style('fill',         palette[idx])
+      .style('fill-opacity', 0.28)
+      .style('stroke',       palette[idx])
+      .style('stroke-width', 2);
+    d3.select(this).select('text')
+      .style('fill',        textPal[idx])
+      .style('font-family', "'DM Mono', monospace")
+      .style('font-size',   '11px')
+      .style('font-weight', '600');
+  });
 
-  /* ─ intersection tint ─ */
-  const intC = document.createElementNS(ns, 'circle');
-  intC.setAttribute('cx', cx2); intC.setAttribute('cy', cy); intC.setAttribute('r', R);
-  intC.setAttribute('fill', '#6b48c8'); intC.setAttribute('fill-opacity', '0.22');
-  intC.setAttribute('clip-path', 'url(#clipVA)');
-  svg.appendChild(intC);
+  /* ─ estilos de zonas de intersección ─ */
+  div.selectAll('.venn-intersection path')
+    .style('fill',         '#6b48c8')
+    .style('fill-opacity', 0.18)
+    .style('stroke-width', 0);
+  div.selectAll('.venn-intersection text')
+    .style('fill',        '#17171c')
+    .style('font-size',   '11px')
+    .style('font-family', "'DM Mono', monospace")
+    .style('font-weight', '700');
 
-  /* ─ helper: text node ─ */
-  const txt = (x, y, content, size, fill, weight, anchor) => {
-    const el = document.createElementNS(ns, 'text');
-    el.setAttribute('x', x); el.setAttribute('y', y);
-    el.setAttribute('text-anchor', anchor || 'middle');
-    el.setAttribute('fill', fill); el.setAttribute('font-size', size);
-    el.setAttribute('font-family', "'DM Mono','Courier New',monospace");
-    if (weight) el.setAttribute('font-weight', weight);
-    el.textContent = content;
-    return el;
-  };
+  /* ─ barra de similitud ─ */
+  const bar = document.createElement('div');
+  bar.style.cssText = 'margin-top:12px;background:#f5f4f9;border:1px solid #e0dcf0;border-radius:14px;height:28px;display:flex;align-items:center;padding:0 16px;position:relative;overflow:hidden;width:220px;';
+  const fill = document.createElement('div');
+  fill.style.cssText = `position:absolute;left:0;top:0;bottom:0;width:${Math.min(simPct, 100)}%;background:#6b48c8;opacity:0.18;border-radius:14px;`;
+  const lbl = document.createElement('div');
+  lbl.style.cssText = "display:flex;justify-content:space-between;width:100%;font-family:'DM Mono',monospace;font-size:10px;position:relative;z-index:1;";
+  lbl.innerHTML = `<span style="color:#93939f">similitud</span><span style="color:#6b48c8;font-weight:600">${simPct.toFixed(1)}%</span>`;
+  bar.appendChild(fill);
+  bar.appendChild(lbl);
+  container.appendChild(bar);
+}
 
-  /* ─ helper: pill badge ─ */
-  const pill = (cx, cy2, w, h, fill, stroke, rx) => {
-    const r = document.createElementNS(ns, 'rect');
-    r.setAttribute('x', cx - w/2); r.setAttribute('y', cy2 - h/2);
-    r.setAttribute('width', w); r.setAttribute('height', h);
-    r.setAttribute('rx', rx || 8); r.setAttribute('fill', fill);
-    if (stroke) { r.setAttribute('stroke', stroke); r.setAttribute('stroke-width', '1'); }
-    return r;
-  };
+function drawVenn2(simPct, countA, countB, countCommon, names) {
+  const container = document.getElementById('venn-container');
+  container.innerHTML = '';
 
-  /* ─ file name pills above circles ─ */
-  const nameA = (names[0]||'PDF 1').replace(/\.pdf$/i,'');
-  const nameB = (names[1]||'PDF 2').replace(/\.pdf$/i,'');
-  const truncA = nameA.length > 18 ? nameA.substring(0,16)+'…' : nameA;
-  const truncB = nameB.length > 18 ? nameB.substring(0,16)+'…' : nameB;
+  const shortN = n => { const s = (n || '').replace(/\.pdf$/i, ''); return s.length > 16 ? s.substring(0, 14) + '…' : s; };
+  const totalA = Math.max(countA + countCommon, 1);
+  const totalB = Math.max(countB + countCommon, 1);
 
-  svg.appendChild(pill(cx1, cy - R - 26, 130, 22, 'rgba(255,119,89,0.12)', 'rgba(255,119,89,0.35)', 11));
-  svg.appendChild(txt(cx1, cy - R - 18, truncA, 10.5, '#d95f3b', '500'));
+  const sets = [
+    { sets: ['A'], size: totalA,              label: shortN(names[0] || 'PDF 1') },
+    { sets: ['B'], size: totalB,              label: shortN(names[1] || 'PDF 2') },
+    { sets: ['A', 'B'], size: Math.max(countCommon, 0), label: countCommon > 0 ? countCommon + ' comunes' : '' }
+  ];
 
-  svg.appendChild(pill(cx2, cy - R - 26, 130, 22, 'rgba(24,99,220,0.10)', 'rgba(24,99,220,0.3)', 11));
-  svg.appendChild(txt(cx2, cy - R - 18, truncB, 10.5, '#1254b8', '500'));
+  const chart = venn.VennDiagram().width(480).height(270);
+  const div = d3.select(container);
+  div.datum(sets).call(chart);
 
-  /* ─ exclusive zone counts ─ */
-  const exA = cx1 - R * 0.48;
-  svg.appendChild(txt(exA, cy - 6, countA.toString(), 30, '#3d1a0f', '300'));
-  svg.appendChild(txt(exA, cy + 18, 'únicos', 10, '#b07060', '400'));
+  /* ─ estilos de los círculos individuales ─ */
+  div.selectAll('.venn-circle').each(function(d) {
+    const isA = d.sets[0] === 'A';
+    d3.select(this).select('path')
+      .style('fill',         isA ? '#ff7759' : '#1863dc')
+      .style('fill-opacity', 0.3)
+      .style('stroke',       isA ? '#ff7759' : '#1863dc')
+      .style('stroke-width', 2);
+    d3.select(this).select('text')
+      .style('fill',        isA ? '#c94e2c' : '#1254b8')
+      .style('font-family', "'DM Mono', monospace")
+      .style('font-size',   '11px')
+      .style('font-weight', '600');
+  });
 
-  const exB = cx2 + R * 0.48;
-  svg.appendChild(txt(exB, cy - 6, countB.toString(), 30, '#0b1f42', '300'));
-  svg.appendChild(txt(exB, cy + 18, 'únicos', 10, '#6080b8', '400'));
+  /* ─ estilos de la zona de intersección ─ */
+  div.selectAll('.venn-intersection path')
+    .style('fill',         '#6b48c8')
+    .style('fill-opacity', 0.22)
+    .style('stroke-width', 0);
+  div.selectAll('.venn-intersection text')
+    .style('fill',        '#17171c')
+    .style('font-size',   '12px')
+    .style('font-family', "'DM Mono', monospace")
+    .style('font-weight', '700');
 
-  /* ─ intersection badge (white pill, always readable) ─ */
-  svg.appendChild(pill(midX, cy - 14, 68, 30, 'rgba(255,255,255,0.94)', 'rgba(100,80,200,0.25)', 15));
-  svg.appendChild(txt(midX, cy - 5, countCommon.toString(), 18, '#17171c', '600'));
-  svg.appendChild(txt(midX, cy + 9, 'comunes', 9, '#6b48c8', '500'));
-
-  /* ─ similarity bar at bottom ─ */
-  const barY = cy + R + 24;
-  const barW = 220, barH = 28, barX = W/2 - barW/2;
-
-  svg.appendChild(pill(W/2, barY + barH/2, barW, barH, '#f5f4f9', '#e0dcf0', 14));
-
-  const filledW = Math.max(8, barW * simPct / 100);
-  const fillBar = document.createElementNS(ns, 'rect');
-  fillBar.setAttribute('x', barX); fillBar.setAttribute('y', barY);
-  fillBar.setAttribute('width', filledW); fillBar.setAttribute('height', barH);
-  fillBar.setAttribute('rx', 14); fillBar.setAttribute('fill', '#6b48c8'); fillBar.setAttribute('fill-opacity', '0.18');
-  svg.appendChild(fillBar);
-
-  svg.appendChild(txt(W/2 - barW/2 + 12, barY + 18, 'similitud', 9, '#93939f', '400', 'start'));
-  svg.appendChild(txt(W/2 + barW/2 - 12, barY + 18, simPct.toFixed(1) + '%', 11, '#6b48c8', '600', 'end'));
-  svg.appendChild(txt(W/2, barY + 18, '─────────────', 9, '#d9d9dd', '400'));
+  /* ─ barra de similitud debajo del SVG ─ */
+  const bar = document.createElement('div');
+  bar.style.cssText = 'margin-top:12px;background:#f5f4f9;border:1px solid #e0dcf0;border-radius:14px;height:28px;display:flex;align-items:center;padding:0 16px;position:relative;overflow:hidden;width:220px;';
+  const fill = document.createElement('div');
+  fill.style.cssText = `position:absolute;left:0;top:0;bottom:0;width:${Math.min(simPct, 100)}%;background:#6b48c8;opacity:0.18;border-radius:14px;`;
+  const lbl = document.createElement('div');
+  lbl.style.cssText = "display:flex;justify-content:space-between;width:100%;font-family:'DM Mono',monospace;font-size:10px;position:relative;z-index:1;";
+  lbl.innerHTML = `<span style="color:#93939f">similitud</span><span style="color:#6b48c8;font-weight:600">${simPct.toFixed(1)}%</span>`;
+  bar.appendChild(fill);
+  bar.appendChild(lbl);
+  container.appendChild(bar);
 }
 </script>
 </body>
