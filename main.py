@@ -1,6 +1,6 @@
 """Punto de entrada de la aplicación: define la app FastAPI y sus rutas."""
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -10,6 +10,19 @@ from app.llm import extraer_keywords, comparacion_directa
 
 app = FastAPI(title="PDF Compare", version="1.0.0")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.exception_handler(Exception)
+async def error_handler(request: Request, exc: Exception):
+    """Captura cualquier excepción no manejada y devuelve JSON con el mensaje real."""
+    msg = str(exc)
+    if "rate_limit" in msg.lower() or "429" in msg:
+        detail = "Límite de tokens de Groq alcanzado. Espera unos minutos o revisa console.groq.com/usage."
+    elif "api_key" in msg.lower() or "401" in msg:
+        detail = "API key de Groq inválida. Verifica el archivo .env."
+    else:
+        detail = f"Error del servidor: {msg}"
+    return JSONResponse(status_code=500, content={"detail": detail})
 
 
 @app.get("/")
@@ -65,6 +78,7 @@ async def compare(files: list[UploadFile] = File(...)):
             "only_a": metricas["only_a"],
             "only_b": metricas["only_b"],
             "only_c": metricas["only_c"],
+            "pairwise": metricas["pairwise"],
             "similarity_pct": metricas["sim_pct"],
             "label": metricas["label"],
         },

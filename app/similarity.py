@@ -60,6 +60,8 @@ def comparar_conjuntos(lista_keywords: list[list[str]]) -> dict:
     """
     conjuntos = [set(kws) for kws in lista_keywords]
 
+    pairwise = {}
+
     if len(conjuntos) == 2:
         interseccion = conjuntos[0] & conjuntos[1]
         only_a = conjuntos[0] - conjuntos[1]
@@ -67,23 +69,38 @@ def comparar_conjuntos(lista_keywords: list[list[str]]) -> dict:
         only_c = set()
         sim_pct = similitud_jaccard(conjuntos[0], conjuntos[1])
     else:
-        # Para 3+ documentos: intersección y unión global
-        interseccion = conjuntos[0].copy()
-        for c in conjuntos[1:]:
-            interseccion &= c
-        union_total = conjuntos[0].copy()
-        for c in conjuntos[1:]:
-            union_total |= c
-        sim_pct = (len(interseccion) / len(union_total) * 100) if union_total else 0.0
-        only_a = conjuntos[0] - interseccion
-        only_b = conjuntos[1] - interseccion if len(conjuntos) > 1 else set()
-        only_c = conjuntos[2] - interseccion if len(conjuntos) > 2 else set()
+        # Intersecciones por pares
+        int_ab = conjuntos[0] & conjuntos[1]
+        int_ac = conjuntos[0] & conjuntos[2]
+        int_bc = conjuntos[1] & conjuntos[2]
+        interseccion = int_ab & conjuntos[2]  # común a los 3
+
+        # Similitud global = promedio de los 3 pares (captura relaciones parciales)
+        sim_ab = similitud_jaccard(conjuntos[0], conjuntos[1])
+        sim_ac = similitud_jaccard(conjuntos[0], conjuntos[2])
+        sim_bc = similitud_jaccard(conjuntos[1], conjuntos[2])
+        sim_pct = (sim_ab + sim_ac + sim_bc) / 3
+
+        # Keywords exclusivas de cada documento
+        only_a = conjuntos[0] - conjuntos[1] - conjuntos[2]
+        only_b = conjuntos[1] - conjuntos[0] - conjuntos[2]
+        only_c = conjuntos[2] - conjuntos[0] - conjuntos[1]
+
+        pairwise = {
+            "ab": round(sim_ab, 1),
+            "ac": round(sim_ac, 1),
+            "bc": round(sim_bc, 1),
+            "int_ab": len(int_ab),
+            "int_ac": len(int_ac),
+            "int_bc": len(int_bc),
+        }
 
     return {
         "intersection": list(interseccion),
         "only_a": list(only_a)[:50],
         "only_b": list(only_b)[:50],
         "only_c": list(only_c)[:50],
+        "pairwise": pairwise,
         "sim_pct": round(sim_pct, 1),
         "label": etiqueta_similitud(sim_pct),
     }
