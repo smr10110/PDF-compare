@@ -1,5 +1,7 @@
 # pdf-compare
 
+**Estudiante:** Angelo Huaiquil
+
 Plataforma web que utiliza inteligencia artificial para comparar temáticamente dos o tres documentos PDF y determinar su grado de afinidad mediante dos estrategias distintas.
 
 ## ¿Qué hace?
