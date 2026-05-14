@@ -852,7 +852,14 @@ function showResults(data) {
 
   const realCountA = new Set(s1.keywords[0]).size - s1.intersection.length;
   const realCountB = new Set(s1.keywords[1]).size - s1.intersection.length;
-  drawVenn(s1.similarity_pct, realCountA, realCountB, s1.intersection.length, names, s1.keywords.map(k => new Set(k).size));
+  const pw = s1.pairwise || {};
+  if (names.length >= 3 && Object.keys(pw).length) {
+    document.getElementById('s1-detail').textContent =
+      `${names[0].replace(/\.pdf$/i,'')} ↔ ${names[1].replace(/\.pdf$/i,'')}: ${pw.ab}% · ` +
+      `${names[0].replace(/\.pdf$/i,'')} ↔ ${names[2].replace(/\.pdf$/i,'')}: ${pw.ac}% · ` +
+      `${names[1].replace(/\.pdf$/i,'')} ↔ ${names[2].replace(/\.pdf$/i,'')}: ${pw.bc}%`;
+  }
+  drawVenn(s1.similarity_pct, realCountA, realCountB, s1.intersection.length, names, s1.keywords.map(k => new Set(k).size), pw);
 
   results.style.display = 'block';
   document.querySelector('.dark-band').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -865,12 +872,12 @@ function renderTags(id, items, common) {
     : '<span class="kw-tag" style="color:var(--muted)">—</span>';
 }
 
-function drawVenn(simPct, countA, countB, countCommon, names, totals) {
-  if (names.length >= 3) { drawVenn3(simPct, countCommon, names, totals); return; }
+function drawVenn(simPct, countA, countB, countCommon, names, totals, pairwise) {
+  if (names.length >= 3) { drawVenn3(simPct, countCommon, names, totals, pairwise || {}); return; }
   drawVenn2(simPct, countA, countB, countCommon, names);
 }
 
-function drawVenn3(simPct, countCommon, names, totals) {
+function drawVenn3(simPct, countCommon, names, totals, pairwise) {
   const container = document.getElementById('venn-container');
   container.innerHTML = '';
 
@@ -884,13 +891,17 @@ function drawVenn3(simPct, countCommon, names, totals) {
      Usamos el valor de la intersección global para todas las combinaciones,
      ya que el backend solo calcula A∩B∩C. Esto asegura que a 0 comunes
      los círculos se separan automáticamente. */
+  const int_ab = pairwise.int_ab ?? common;
+  const int_ac = pairwise.int_ac ?? 0;
+  const int_bc = pairwise.int_bc ?? 0;
+
   const sets = [
-    { sets: ['A'],         size: totalA, label: shortN(names[0] || 'PDF 1') },
-    { sets: ['B'],         size: totalB, label: shortN(names[1] || 'PDF 2') },
-    { sets: ['C'],         size: totalC, label: shortN(names[2] || 'PDF 3') },
-    { sets: ['A', 'B'],    size: common },
-    { sets: ['A', 'C'],    size: common },
-    { sets: ['B', 'C'],    size: common },
+    { sets: ['A'],           size: totalA, label: shortN(names[0] || 'PDF 1') },
+    { sets: ['B'],           size: totalB, label: shortN(names[1] || 'PDF 2') },
+    { sets: ['C'],           size: totalC, label: shortN(names[2] || 'PDF 3') },
+    { sets: ['A', 'B'],      size: int_ab, label: int_ab > 0 ? int_ab + ' comunes' : '' },
+    { sets: ['A', 'C'],      size: int_ac, label: int_ac > 0 ? int_ac + ' comunes' : '' },
+    { sets: ['B', 'C'],      size: int_bc, label: int_bc > 0 ? int_bc + ' comunes' : '' },
     { sets: ['A', 'B', 'C'], size: common, label: common > 0 ? common + ' comunes' : '' }
   ];
 
